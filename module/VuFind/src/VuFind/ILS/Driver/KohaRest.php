@@ -35,8 +35,8 @@ namespace VuFind\ILS\Driver;
 use VuFind\Date\DateException;
 use VuFind\Exception\AuthToken as AuthTokenException;
 use VuFind\Exception\ILS as ILSException;
-use VuFind\Service\CurrencyFormatter;
 use VuFind\ILS\Logic\AvailabilityStatus;
+use VuFind\Service\CurrencyFormatter;
 
 use function array_key_exists;
 use function call_user_func;
@@ -2009,29 +2009,31 @@ class KohaRest extends \VuFind\ILS\Driver\AbstractBase implements
                 $duedate = $this->convertDate(
                     $avail['unavailabilities']['Item::CheckedOut']['due_date'],
                     true
-		);
-            } (isset($avail['unavailabilities']['Item::Transfer')) {
-	        $transit = $avail['unavailabilities']['Item::Transfer'];
-	        if (isset($transit['to_library'])) {
-		    $status = 'transit_to';
-                    $inTransit = $this->getLibraryName($transit['to_library']);
-	        }
-	        if (isset($transit['datesent'])) {
-		    $status = 'transit_to_date';
-		    $inTransitDate = $this->convertDate(
-                        $transit['datesent'],
-                        true
-                    );
-		}
+                );
             } else {
                 $duedate = null;
+            }
+
+            $extraStatusInformation = [];
+            if ($transit = $avail['unavailabilities']['Item::Transfer'] ?? null) {
+                if (isset($transit['to_library'])) {
+                    $status = 'transit_to';
+                    $extraStatusInformation['location'] = $this->getLibraryName($transit['to_library']);
+                    if (isset($transit['datesent'])) {
+                        $status = 'transit_to_date';
+                        $extraStatusInformation['date'] = $this->convertDate(
+                            $transit['datesent'],
+                            true
+                        );
+                    }
+                }
             }
 
             $entry = [
                 'id' => $id,
                 'item_id' => $item['item_id'],
                 'location' => $this->getItemLocationName($item),
-                'availability' => new AvailabilityStatus($available, $status, ['location' => $inTransit, 'date' => $inTransitDate]),
+                'availability' => new AvailabilityStatus($available, $status, $extraStatusInformation),
                 'status_array' => $statusCodes,
                 'reserve' => 'N',
                 'callnumber' => $this->getItemCallNumber($item),
