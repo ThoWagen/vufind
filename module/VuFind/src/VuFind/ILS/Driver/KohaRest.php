@@ -36,6 +36,7 @@ use VuFind\Date\DateException;
 use VuFind\Exception\AuthToken as AuthTokenException;
 use VuFind\Exception\ILS as ILSException;
 use VuFind\Service\CurrencyFormatter;
+use VuFind\ILS\Logic\AvailabilityStatus;
 
 use function array_key_exists;
 use function call_user_func;
@@ -2008,7 +2009,20 @@ class KohaRest extends \VuFind\ILS\Driver\AbstractBase implements
                 $duedate = $this->convertDate(
                     $avail['unavailabilities']['Item::CheckedOut']['due_date'],
                     true
-                );
+		);
+            } (isset($avail['unavailabilities']['Item::Transfer')) {
+	        $transit = $avail['unavailabilities']['Item::Transfer'];
+	        if (isset($transit['to_library'])) {
+		    $status = 'transit_to';
+                    $inTransit = $this->getLibraryName($transit['to_library']);
+	        }
+	        if (isset($transit['datesent'])) {
+		    $status = 'transit_to_date';
+		    $inTransitDate = $this->convertDate(
+                        $transit['datesent'],
+                        true
+                    );
+		}
             } else {
                 $duedate = null;
             }
@@ -2017,8 +2031,7 @@ class KohaRest extends \VuFind\ILS\Driver\AbstractBase implements
                 'id' => $id,
                 'item_id' => $item['item_id'],
                 'location' => $this->getItemLocationName($item),
-                'availability' => $available,
-                'status' => $status,
+                'availability' => new AvailabilityStatus($available, $status, ['location' => $inTransit, 'date' => $inTransitDate]),
                 'status_array' => $statusCodes,
                 'reserve' => 'N',
                 'callnumber' => $this->getItemCallNumber($item),
