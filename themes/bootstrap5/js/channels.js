@@ -219,11 +219,6 @@ VuFind.register("channels", function Channels() {
     // Disable more paging
     disableLoadMoreBtn(loadMoreBtn);
 
-    // Make sure the channel is initialized
-    if (typeof channelEl.hiddenItems === "undefined") {
-      channelInit(channelEl);
-    }
-
     // Reveal hidden items
     const pageSize = Number(channelEl.dataset.pageSize);
     let hiddenItems = getHiddenItems(channelEl);
@@ -465,13 +460,25 @@ VuFind.register("channels", function Channels() {
   }
 
   /**
+   * Update the container by initializing channels.
+   * @param {object} params An object containing the container element.
+   */
+  function updateContainer(params) {
+    let container = params.container;
+
+    // Initial manipulations
+    for (const channelEl of container.querySelectorAll(".channel")) {
+      channelInit(channelEl);
+    }
+  }
+
+  /**
    * Setup the channels module and events
    */
   function init() {
-    // Initial manipulations
-    for (const channelEl of document.querySelectorAll(".channel")) {
-      channelInit(channelEl);
-    }
+
+    updateContainer({container: document});
+    VuFind.listen('record-tab-init', updateContainer);
 
     // Global button listener
     document.addEventListener("click", function channelsClickHandler(event) {
